@@ -1,5 +1,7 @@
 package com.tbread
 
+import com.tbread.config.PcapCapturerConfig
+import kotlinx.coroutines.channels.Channel
 import org.pcap4j.core.BpfProgram
 import org.pcap4j.core.PacketListener
 import org.pcap4j.core.PcapNativeException;
@@ -9,48 +11,42 @@ import org.pcap4j.packet.TcpPacket
 import org.pcap4j.util.ByteArrays
 import kotlin.system.exitProcess
 
-class PcapCapturer {
+class PcapCapturer(private val config: PcapCapturerConfig, private val channel: Channel<ByteArray>) {
 
-    private val SERVER_IP = PropertyHandler.getProperty("server.ip")
-    private val SERVER_PORT = PropertyHandler.getProperty("server.port")
-    //추후 배포시엔 디폴트값 넣은채로 빌드하거나, deviceIdx 처럼 자동 저장 추가하기
 
-    private val TIMEOUT_WAIT_TIME = PropertyHandler.getProperty("server.timeout", "10")?.toInt()!!
-    private val MAX_SNAPSHOT_SIZE = PropertyHandler.getProperty("server.maxSnapshotSize", "65536")?.toInt()!!
+    companion object {
+        private fun getAllDevices(): List<PcapNetworkInterface> {
+            return try {
+                Pcaps.findAllDevs() ?: emptyList()
+            } catch (e: PcapNativeException) {
+                println("${this::class.java.simpleName} : Pcap 핸들러 초기화 실패")
+                exitProcess(2)
+            }
+        }
 
-    private val nif by lazy {
-        devices[PropertyHandler.getProperty("device")!!.toInt()]
-    }
+        fun printDevices() {
+            for ((i, device) in getAllDevices().withIndex()) {
+                println(i.toString() + " - " + device.description + " : " + device.addresses)
+            }
+        }
 
-    private val PCAP_HANDLE by lazy {
-        nif.openLive(MAX_SNAPSHOT_SIZE, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, TIMEOUT_WAIT_TIME)
-    }
-
-    private val devices by lazy {
-        try {
-            Pcaps.findAllDevs()
-        } catch (e: PcapNativeException) {
-            println("${this::class.java.simpleName} : Pcap 핸들러 초기화 실패")
-            exitProcess(2)
+        fun getDeviceSize(): Int {
+            return getAllDevices().size
         }
     }
 
 
-    fun printDevices() {
-        for ((i, device) in devices.withIndex()) {
-            println(i.toString() + " - " + device.description + " : " + device.addresses)
+    fun start() {
+        val devices = getAllDevices()
+        if (config.deviceIdx !in devices.indices) {
+            println("${this::class.java.simpleName}: [에러] 잘못된 장치 인덱스입니다.")
+            exitProcess(1)
         }
-    }
-
-    fun getDeviceSize(): Int {
-        return devices.size
-    }
-
-    fun pcapStart() {
-        val filter = "src host $SERVER_IP and port $SERVER_PORT"
-        PCAP_HANDLE.setFilter(filter, BpfProgram.BpfCompileMode.OPTIMIZE)
-        println("${this::class.java.simpleName} : 캡쳐시작 필터구문 : $filter")
-
+        val nif = devices[config.deviceIdx]
+        val handle = nif.openLive(config.snapshotSize, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, config.timeout)
+        val filter = "src host ${config.serverIp} and port ${config.serverPort}"
+        handle.setFilter(filter, BpfProgram.BpfCompileMode.OPTIMIZE)
+        println("${this::class.java.simpleName} : 필터 설정 $filter")
         val listener = PacketListener { packet ->
             if (packet.contains(TcpPacket::class.java)) {
                 val tcpPacket = packet.get(TcpPacket::class.java)
@@ -58,14 +54,14 @@ class PcapCapturer {
                 if (payload != null) {
                     val data = payload.rawData
                     if (data.isNotEmpty()) {
-                        println(ByteArrays.toHexString(data, " "))
+                        channel.trySend(data)
                     }
                 }
             }
         }
         try {
-            PCAP_HANDLE.use { handle ->
-                handle.loop(-1, listener)
+            handle.use { h ->
+                h.loop(-1, listener)
             }
         } catch (e: InterruptedException) {
             e.printStackTrace()

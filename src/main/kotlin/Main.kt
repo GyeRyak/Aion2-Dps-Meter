@@ -1,6 +1,13 @@
 package com.tbread
 
-fun main() {
+import com.tbread.config.PcapCapturerConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+
+fun main() = runBlocking {
     var deviceIdx = PropertyHandler.getProperty("device")
     if (deviceIdx == null) {
         println("사용할 네트워크 기기 번호를 입력하세요.")
@@ -13,5 +20,23 @@ fun main() {
         }.toString()
         PropertyHandler.setProperty("device", deviceIdx)
     }
-    PcapCapturer.pcapStart()
+    val channel = Channel<ByteArray>(Channel.UNLIMITED)
+    val config = PcapCapturerConfig.loadFromProperties()
+
+    val processor = StreamProcessor()
+    val assembler = StreamAssembler(processor)
+    val capturer = PcapCapturer(config, channel)
+
+    launch(Dispatchers.Default) {
+        for (chunk in channel) {
+            assembler.processChunk(chunk)
+        }
+    }
+
+    launch(Dispatchers.IO) {
+        capturer.start()
+    }
+
+    delay(Long.MAX_VALUE)
+    //이건 나중에 컴포즈나 fx 추가하면 빼기
 }
