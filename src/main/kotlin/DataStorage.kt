@@ -21,6 +21,17 @@ class DataStorage {
         println("$uid 할당 닉네임 변경됨 이전: ${nicknameStorage[uid]} 현재: $nickname")
     }
 
+    fun getDataByTarget(targetId: Int): HashMap<String, Set<ParsedDamagePacket>> {
+        val res = HashMap<String,Set<ParsedDamagePacket>>()
+        damageStorage.forEach { (actorId,targetMap:ConcurrentHashMap<String,MutableSet<ParsedDamagePacket>>) ->
+            val packet = targetMap[actorId]
+            if (packet != null) {
+                res[actorId] = packet
+            }
+        }
+        return res
+    }
+
     private fun flushDamageStorage() {
         damageStorage.clear()
     }
