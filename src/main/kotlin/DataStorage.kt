@@ -8,6 +8,7 @@ class DataStorage {
     private val byTargetStorage = ConcurrentHashMap<Int, ConcurrentSkipListSet<ParsedDamagePacket>>()
     private val byActorStorage = ConcurrentHashMap<Int, ConcurrentSkipListSet<ParsedDamagePacket>>()
     private val nicknameStorage = ConcurrentHashMap<Int, String>()
+    private val summonStorage = HashMap<Int,Int>()
 
     @Synchronized
     fun appendDamage(pdp: ParsedDamagePacket) {
@@ -15,6 +16,10 @@ class DataStorage {
             .add(pdp)
         byTargetStorage.getOrPut(pdp.getTargetId()) { ConcurrentSkipListSet(compareBy<ParsedDamagePacket> { it.getTimeStamp() }.thenBy { it.getUuid() }) }
             .add(pdp)
+    }
+
+    fun appendSummon(summoner:Int,summon:Int){
+        summonStorage[summon] = summoner
     }
 
     fun appendNickname(uid: Int, nickname: String) {

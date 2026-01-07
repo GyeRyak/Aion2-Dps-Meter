@@ -91,7 +91,8 @@ class StreamProcessor(private val dataStorage: DataStorage) {
 
         if (offset + 2 > packet.size) return
         val realActorId = parseUInt16le(packet, offset)
-        println("소환수: ${summonInfo.value} 주인: $realActorId")
+
+        dataStorage.appendSummon(realActorId,summonInfo.value)
 
     }
 
