@@ -9,6 +9,7 @@ class DataStorage {
     private val byActorStorage = ConcurrentHashMap<Int, ConcurrentSkipListSet<ParsedDamagePacket>>()
     private val nicknameStorage = ConcurrentHashMap<Int, String>()
     private val summonStorage = HashMap<Int,Int>()
+    private val skillCodeData = HashMap<Int,String>()
 
     @Synchronized
     fun appendDamage(pdp: ParsedDamagePacket) {
@@ -38,27 +39,7 @@ class DataStorage {
         nicknameStorage.clear()
     }
 
-    fun printDamageByActor() {
-        byActorStorage.forEach { (actorId, actorSet) ->
-            var damageSum = 0
-            val nickname = nicknameStorage[actorId] ?: actorId
-            println("공격자: $nickname")
-            actorSet.forEach { p ->
-                val targetMap = HashMap<Int, ParsedDamagePacket>()
-                println("피격자: ${p.getTargetId()}, 스킬: ${p.getSkillCode1()},${p.getSkillType()}, 데미지: ${p.getDamage()}")
-            }
-            val time =
-                ((actorSet.last().getTimeStamp() - actorSet.first().getTimeStamp()) / 1000).takeIf { it != 0L } ?: 1
-            println("데미지합산: $damageSum, DPS: ${damageSum / time}")
-        }
-    }
-
-    fun printDamageByTarget(){
-        byTargetStorage.forEach { (targetId, targetSet) ->
-            println("피격자: $targetId")
-            targetSet.forEach { p ->
-                println("공격자: ${nicknameStorage[p.getActorId()]}, 스킬: ${p.getSkillCode1()},${p.getSkillType()}, 데미지: ${p.getDamage()}")
-            }
-        }
+    fun getSkillName(skillCode:Int):String{
+        return skillCodeData[skillCode]?:skillCode.toString()
     }
 }
