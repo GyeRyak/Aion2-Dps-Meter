@@ -2,8 +2,16 @@ package com.tbread
 
 import com.tbread.entity.DpsData
 
-interface DpsCalculator {
-    fun getDps():DpsData
+class DpsCalculator(private val dataStorage: DataStorage) {
 
-    fun getDetailLog():DpsData
+    enum class Mode{
+        ALL,BOSS_ONLY
+    }
+
+    private var mode:Mode = Mode.BOSS_ONLY
+
+    fun setMode(mode:Mode){
+        this.mode = mode
+    }
+    
 }
