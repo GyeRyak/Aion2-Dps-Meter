@@ -41,11 +41,22 @@
       <div
         class="list"
         id="list"></div>
-      <div id="console" style="position: fixed; bottom: 0; left: 0; right: 0;
-                         background: rgba(0,0,0,0.8); color: lime;
-                         font-family: monospace; font-size: 12px;
-                         padding: 10px; max-height: 200px; overflow-y: auto; display: none">
-      </div>
+      <div
+        id="console"
+        style="
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0, 0, 0, 0.8);
+          color: lime;
+          font-family: monospace;
+          font-size: 12px;
+          padding: 10px;
+          max-height: 200px;
+          overflow-y: auto;
+          display: none;
+        "></div>
     </div>
 
     <div
@@ -326,6 +337,7 @@
       const createRowView = () => {
         const rowEl = document.createElement("div");
         rowEl.className = "item";
+        rowEl.style.display = "none";
 
         const fillEl = document.createElement("div");
         fillEl.className = "fill";
@@ -395,38 +407,49 @@
       };
 
       const POLL_MS = 250;
+      let USER_NAME = "박승찬2";
 
-      const testTick = (() => {
-        const rows = [
-          { id: 1, name: "힝힝", totalDmg: 1, dps: 43097, isUser: false },
-          { id: 2, name: "승찬", totalDmg: 1, dps: 12418, isUser: true },
-          { id: 3, name: "권진아", totalDmg: 1, dps: 24818, isUser: false },
-          { id: 4, name: "타샤", totalDmg: 1, dps: 24318, isUser: false },
-          { id: 5, name: "치치", totalDmg: 1, dps: 55418, isUser: false },
-          { id: 6, name: "찢", totalDmg: 1, dps: 15238, isUser: false },
-          { id: 7, name: "냥꼬", totalDmg: 1, dps: 45418, isUser: false },
-          { id: 8, name: "유노", totalDmg: 1, dps: 21345, isUser: false },
-        ];
+      let lastJson = null;
 
-        const JITTER = 2500;
-        const MIN_DPS = 5000;
+      const buildRowsFromJson = (data) => {
+        const obj = JSON.parse(data);
 
-        return () => {
-          rows.forEach((r) => {
-            const delta = (Math.random() * 2 - 1) * JITTER;
-            r.dps = Math.max(MIN_DPS, Math.round(r.dps + delta));
+        const rows = [];
+        for (const [name, value] of Object.entries(obj)) {
+          // dps 뒤 소수점 버림
+          const dps = Math.trunc(Number(value));
+          if (!Number.isFinite(dps)) continue;
+
+          rows.push({
+            id: name,
+            name,
+            dps,
+            isUser: name === USER_NAME,
           });
+        }
 
-          const sorted = [...rows].sort((a, b) => b.dps - a.dps);
-          const display = getDisplayRows(sorted);
-          renderRows(display);
-        };
-      })();
+        return rows;
+      };
+
+      const fetchDps = () => {
+        const data = window.dpsData?.getDpsData?.();
+        if (typeof data !== "string") return;
+        //똑같은값 오면 업데이트안함
+        if (data === lastJson) {
+          return;
+        }
+        lastJson = data;
+
+        const rows = buildRowsFromJson(data);
+        rows.sort((a, b) => (Number(b.dps) || 0) - (Number(a.dps) || 0));
+
+        const display = getDisplayRows(rows);
+        renderRows(display);
+      };
 
       elBossName.textContent = "루드라";
-      testTick();
-      setInterval(testTick, POLL_MS);
-
+      fetchDps();
+      setInterval(fetchDps, POLL_MS);
 
       /*
       JS 브릿지 마우스 드래그 이벤트 추가
@@ -436,7 +459,7 @@
       let startX, startY;
       let initialStageX, initialStageY;
 
-      document.addEventListener('mousedown', (e) => {
+      document.addEventListener("mousedown", (e) => {
         isDragging = true;
         startX = e.screenX;
         startY = e.screenY;
@@ -444,7 +467,7 @@
         initialStageY = window.screenY;
       });
 
-      document.addEventListener('mousemove', (e) => {
+      document.addEventListener("mousemove", (e) => {
         if (isDragging && window.javaBridge) {
           const deltaX = e.screenX - startX;
           const deltaY = e.screenY - startY;
@@ -452,7 +475,7 @@
         }
       });
 
-      document.addEventListener('mouseup', () => {
+      document.addEventListener("mouseup", () => {
         isDragging = false;
       });
 
@@ -460,31 +483,31 @@
       타임라인 테스트
       * */
 
-function callDebugWindow() {
-  if (!window.dpsData){
-    setTimeout(callDebugWindow, 100);
-    return;
-  }
+      function callDebugWindow() {
+        if (!window.dpsData) {
+          setTimeout(callDebugWindow, 100);
+          return;
+        }
 
-    const consoleDiv = document.getElementById('console');
-  if (window.dpsData.isDebuggingMode()) {
-    consoleDiv.style.display = 'block'
-    const originalLog = console.log;
+        const consoleDiv = document.getElementById("console");
+        if (window.dpsData.isDebuggingMode()) {
+          consoleDiv.style.display = "block";
+          const originalLog = console.log;
 
-    console.log = function (...args) {
-      originalLog.apply(console, args);
-      consoleDiv.innerHTML += args.join(' ') + '<br>';
-      consoleDiv.scrollTop = consoleDiv.scrollHeight;
-    };
-    console.log('콘솔 활성화됨');
-    setInterval(() => {
-      const data = window.dpsData.getDpsData();
-      console.log(data)
-    }, 500)
-  }
-}
+          console.log = function (...args) {
+            originalLog.apply(console, args);
+            consoleDiv.innerHTML += args.join(" ") + "<br>";
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+          };
+          console.log("콘솔 활성화됨");
+          setInterval(() => {
+            const data = window.dpsData.getDpsData();
+            console.log(data);
+          }, 500);
+        }
+      }
 
-      callDebugWindow()
+      callDebugWindow();
     </script>
   </body>
 </html>
