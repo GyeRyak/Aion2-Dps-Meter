@@ -25,7 +25,6 @@ class DataStorage {
 
     fun appendNickname(uid: Int, nickname: String) {
         if (nicknameStorage[uid] != null && nicknameStorage[uid].equals(nickname)) return
-        println("$uid 할당 닉네임 변경됨 이전: ${nicknameStorage[uid]} 현재: $nickname")
         nicknameStorage[uid] = nickname
     }
 
@@ -41,5 +40,13 @@ class DataStorage {
 
     fun getSkillName(skillCode:Int):String{
         return skillCodeData[skillCode]?:skillCode.toString()
+    }
+
+    fun getBossModeData(): ConcurrentHashMap<Int, ConcurrentSkipListSet<ParsedDamagePacket>> {
+        return byTargetStorage
+    }
+
+    fun getNickname():ConcurrentHashMap<Int, String>{
+        return nicknameStorage
     }
 }
