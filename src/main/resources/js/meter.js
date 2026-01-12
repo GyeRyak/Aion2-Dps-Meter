@@ -69,7 +69,7 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
 
   const renderRows = (rows) => {
     elList.classList.toggle("hasRows", rows.length > 0);
-    
+
     let topDps = 1;
 
     for (const row of rows) topDps = Math.max(topDps, Number(row?.dps) || 0);
@@ -104,10 +104,15 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
     rows.sort((a, b) => (Number(b.dps) || 0) - (Number(a.dps) || 0));
     renderRows(getDisplayRows(rows));
   };
+  const updateFromRows = (rows) => {
+    const arr = Array.isArray(rows) ? rows : [];
+    arr.sort((a, b) => (Number(b?.dps) || 0) - (Number(a?.dps) || 0));
+    renderRows(getDisplayRows(arr));
+  };
 
   const setOnClickUserRow = (fn) => {
     onClickUserRow = fn;
   };
 
-  return { updateFromJson, setOnClickUserRow };
+  return { updateFromJson, updateFromRows, setOnClickUserRow };
 };

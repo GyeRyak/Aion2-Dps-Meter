@@ -63,17 +63,42 @@ class DpsApp {
   }
 
   fetchDps() {
-    const data = window.dpsData?.getDpsData?.();
-    if (typeof data !== "string") {
-      return;
+    const raw = window.dpsData?.getDpsData?.();
+    if (typeof raw !== "string") return;
+    if (raw === this.lastJson) return;
+    this.lastJson = raw;
+
+    const { rows, targetName } = this.buildRowsFromPayload(raw);
+
+    this.elBossName.textContent = targetName;
+
+    this.meterUI.updateFromRows(rows);
+  }
+  buildRowsFromPayload(raw) {
+    const payload = JSON.parse(raw);
+    const targetName = typeof payload?.targetName === "string" ? payload.targetName : "";
+
+    const mapObj = payload?.map && typeof payload.map === "object" ? payload.map : {};
+    const rows = this.buildRowsFromMapObject(mapObj);
+
+    return { rows, targetName };
+  }
+  buildRowsFromMapObject(mapObj) {
+    const rows = [];
+
+    for (const [name, value] of Object.entries(mapObj || {})) {
+      const dps = Math.trunc(Number(value));
+      if (!Number.isFinite(dps)) continue;
+
+      rows.push({
+        id: name,
+        name,
+        dps,
+        isUser: name === this.USER_NAME,
+      });
     }
 
-    if (data === this.lastJson) {
-      return;
-    }
-    this.lastJson = data;
-    
-    this.meterUI.updateFromJson(data);
+    return rows;
   }
 
   getDetails(row) {
@@ -170,12 +195,6 @@ class DpsApp {
     });
   }
   callDebugWindow() {
-    if (!window.dpsData) {
-      setTimeout(() => this.callDebugWindow(), 100);
-      return;
-    }
-
-    const consoleDiv = document.querySelector(".console");
     if (window.dpsData.isDebuggingMode()) {
       consoleDiv.style.display = "block";
       const originalLog = console.log;
