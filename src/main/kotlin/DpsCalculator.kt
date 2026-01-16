@@ -76,7 +76,6 @@ class DpsCalculator(private val dataStorage: DataStorage) {
                 dpsData.map[nickname] = PersonalData()
             }
             dpsData.map[nickname]!!.addDamage(pdp.getDamage().toDouble())
-            dpsData.map[nickname]!!.damageContribution = dpsData.map[nickname]!!.amount / totalDamage * 100
             if (dpsData.map[nickname]!!.job == "") {
                 val origSkillCode = inferOriginalSkillCode(pdp.getSkillCode1()) ?: -1
                 val job = JobClass.convertFromSkill(origSkillCode)
@@ -87,6 +86,7 @@ class DpsCalculator(private val dataStorage: DataStorage) {
         }
         dpsData.map.forEach { (_, data) ->
             data.dps = data.amount / battleTime * 1000
+            data.damageContribution = data.amount / totalDamage * 100
         }
         return dpsData
     }
