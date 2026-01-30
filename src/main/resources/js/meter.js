@@ -33,11 +33,18 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
     nameEl.className = "name";
 
     const dpsContainer = document.createElement("div");
-    const dpsNumber = document.createElement("p");
     dpsContainer.className = "dps";
+
+    const dpsAmount = document.createElement("p");
+    dpsAmount.className = "dpsAmount";
+    
+    const dpsNumber = document.createElement("p");
+    dpsNumber.className = "dpsNumber";
+    
     const dpsContribution = document.createElement("p");
     dpsContribution.className = "dpsContribution";
 
+    dpsContainer.appendChild(dpsAmount);
     dpsContainer.appendChild(dpsNumber);
     dpsContainer.appendChild(dpsContribution);
 
@@ -55,6 +62,7 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
       dpsContainer,
       classIconEl,
       classIconImg,
+      dpsAmount,
       dpsNumber,
       dpsContribution,
       fillEl,
@@ -112,9 +120,14 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
     }
   };
 
-  const renderRows = (rows) => {
+  const renderRows = ({ rows, totalDamage }) => {
     const now = nowMs();
     const nextVisibleIds = new Set();
+    const elTotalDamage = document.querySelector(".totalDamage");
+    
+    if (elTotalDamage) {
+        elTotalDamage.textContent = totalDamage > 0 ? dpsFormatter.format(Math.trunc(totalDamage)) : "";
+    }
 
     elList.classList.toggle("hasRows", rows.length > 0);
 
@@ -152,6 +165,7 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
       // view.classIconEl.style.display = "";
 
       const dps = Number(row.dps) || 0;
+      const amount = Number(row.amount) || 0;
       const damageContribution = Number(row.damageContribution) || 0;
 
       let contributionClass = "";
@@ -170,6 +184,7 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
         view.prevContribClass = contributionClass;
       }
 
+      view.dpsAmount.textContent = dpsFormatter.format(amount);
       view.dpsNumber.textContent = `${dpsFormatter.format(dps)}/초`;
       view.dpsContribution.textContent = `${damageContribution.toFixed(1)}%`;
       const ratio = Math.max(0, Math.min(1, dps / topDps));
@@ -189,14 +204,24 @@ const createMeterUI = ({ elList, dpsFormatter, getUserName, onClickUserRow }) =>
     pruneCache(nextVisibleIds);
   };
 
-  const updateFromRows = (rows) => {
+  const updateFromRows = (arg) => {
+    let rows = [];
+    let totalDamage = 0;
+    if (Array.isArray(arg)) {
+        rows = arg;
+    } else {
+        rows = arg.rows || [];
+        totalDamage = arg.totalDamage || 0;
+    }
     const arr = Array.isArray(rows) ? rows.slice() : [];
     arr.sort((a, b) => (Number(b?.dps) || 0) - (Number(a?.dps) || 0));
-    renderRows(getDisplayRows(arr));
+    renderRows({ rows: getDisplayRows(arr), totalDamage });
   };
   const onResetMeterUi = () => {
     elList.classList.remove("hasRows");
     lastVisibleIds = new Set();
+    const elTotalDamage = document.querySelector(".totalDamage");
+    if (elTotalDamage) elTotalDamage.textContent = "";
 
     const battleTimeEl = elList.querySelector(".battleTime");
     if (battleTimeEl) {

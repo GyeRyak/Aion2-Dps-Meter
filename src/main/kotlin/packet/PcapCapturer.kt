@@ -18,7 +18,7 @@ class PcapCapturer(private val config: PcapCapturerConfig, private val channel: 
     companion object {
         private val logger = LoggerFactory.getLogger(javaClass.enclosingClass)
 
-        private fun getAllDevices(): List<PcapNetworkInterface> {
+        fun getAllDevices(): List<PcapNetworkInterface> {
             return try {
                 Pcaps.findAllDevs() ?: emptyList()
             } catch (e: PcapNativeException) {
@@ -45,15 +45,35 @@ class PcapCapturer(private val config: PcapCapturerConfig, private val channel: 
 
 
     fun start() {
-        val socket = DatagramSocket()
-        socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
-        val ip = socket.localAddress.hostAddress
-        if (ip == null) {
-            logger.error("ip 검색에 실패했습니다.")
-            exitProcess(1)
-            //나중에 gui 연결후 어떻게할지 정리해서 처리
+        var nif: PcapNetworkInterface? = null
+        if (!config.targetInterface.equals("Any", ignoreCase = true)) {
+            val devices = getAllDevices()
+            nif = devices.find { it.name == config.targetInterface }
+            if (nif == null) {
+                logger.warn("설정된 인터페이스(${config.targetInterface})를 찾을 수 없어 자동 탐색을 시도합니다.")
+            } else {
+                logger.info("설정된 인터페이스(${nif.description ?: nif.name})를 사용합니다.")
+            }
         }
-        val nif = getMainDevice(ip)
+
+        if (nif == null) {
+            val socket = DatagramSocket()
+            try {
+                socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+                val ip = socket.localAddress.hostAddress
+                if (ip == null) {
+                    logger.error("ip 검색에 실패했습니다.")
+                    exitProcess(1)
+                    //나중에 gui 연결후 어떻게할지 정리해서 처리
+                }
+                nif = getMainDevice(ip)
+            } catch (e: Exception) {
+                logger.error("자동 인터페이스 선택 중 오류 발생", e)
+            } finally {
+                socket.close()
+            }
+        }
+        
         if (nif == null){
             logger.error("네트워크 디바이스 탐색에 실패했습니다.")
             exitProcess(1)

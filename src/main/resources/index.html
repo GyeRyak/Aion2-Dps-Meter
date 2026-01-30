@@ -25,9 +25,11 @@
           </div>
           <div class="bossNames">
             <span class="bossName"></span>
+            <span class="totalDamage"></span>
           </div>
 
           <div class="headerBtns">
+            <div class="headerBtn settingsBtn"><i data-lucide="settings"></i></div>
             <div class="headerBtn resetBtn"><i data-lucide="rotate-ccw"></i></div>
             <div class="headerBtn collapseBtn">
               <i
@@ -90,6 +92,21 @@
           overflow-y: auto;
           display: none;
         "></div>
+    </div>
+    <div class="settingsModal" id="settingsModal">
+      <div class="settingsCard">
+        <div class="settingsTitle">설정</div>
+        <div class="settingsContent">
+            <label for="networkInterfaceSelect">네트워크 인터페이스 (재시작 필요):</label>
+            <select id="networkInterfaceSelect">
+                <option value="Any">Any (Auto Detect)</option>
+            </select>
+        </div>
+        <div class="settingsActions">
+          <button class="settingsBtn primary" id="saveSettingsBtn">저장</button>
+          <button class="settingsBtn secondary" id="closeSettingsBtn">취소</button>
+        </div>
+      </div>
     </div>
     <div
       class="updateModal"

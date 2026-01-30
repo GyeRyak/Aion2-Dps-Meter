@@ -42,8 +42,15 @@ class DpsApp {
 
     this.resetBtn = document.querySelector(".resetBtn");
     this.collapseBtn = document.querySelector(".collapseBtn");
+    this.settingsBtn = document.querySelector(".settingsBtn");
+
+    this.settingsModal = document.querySelector("#settingsModal");
+    this.saveSettingsBtn = document.querySelector("#saveSettingsBtn");
+    this.closeSettingsBtn = document.querySelector("#closeSettingsBtn");
+    this.networkInterfaceSelect = document.querySelector("#networkInterfaceSelect");
 
     this.bindHeaderButtons();
+    this.bindSettingsEvents();
     this.bindDragToMoveWindow();
 
     this.meterUI = createMeterUI({
@@ -166,7 +173,7 @@ class DpsApp {
 
     this.lastJson = raw;
 
-    const { rows, targetName, battleTimeMs } = this.buildRowsFromPayload(raw);
+    const { rows, targetName, battleTimeMs, totalDamage } = this.buildRowsFromPayload(raw);
     this._lastBattleTimeMs = battleTimeMs;
 
 
@@ -213,7 +220,7 @@ class DpsApp {
 
     // 렌더
     this.elBossName.textContent = targetName ? targetName : "";
-    this.meterUI.updateFromRows(rowsToRender);
+    this.meterUI.updateFromRows({ rows: rowsToRender, totalDamage });
   }
 
   buildRowsFromPayload(raw) {
@@ -225,8 +232,10 @@ class DpsApp {
 
     const battleTimeMsRaw = payload?.battleTime;
     const battleTimeMs = Number.isFinite(Number(battleTimeMsRaw)) ? Number(battleTimeMsRaw) : null;
+    
+    const totalDamage = Number(payload?.totalDamage) || 0;
 
-    return { rows, targetName, battleTimeMs };
+    return { rows, targetName, battleTimeMs, totalDamage };
   }
 
   buildRowsFromMapObject(mapObj) {
@@ -241,6 +250,8 @@ class DpsApp {
 
       const dpsRaw = isObj ? value.dps : value;
       const dps = Math.trunc(Number(dpsRaw));
+      
+      const amount = isObj ? (Number(value.amount) || 0) : 0;
 
       // 소수점 한자리
       const contribRaw = isObj ? Number(value.damageContribution) : NaN;
@@ -257,6 +268,7 @@ class DpsApp {
         name,
         job,
         dps,
+        amount,
         damageContribution,
         isUser: name === this.USER_NAME,
       });
@@ -406,6 +418,53 @@ class DpsApp {
     this.resetBtn?.addEventListener("click", () => {
       this.resetAll({ callBackend: true });
     });
+  }
+
+  bindSettingsEvents() {
+    this.settingsBtn?.addEventListener("click", () => {
+      this.openSettings();
+    });
+
+    this.closeSettingsBtn?.addEventListener("click", () => {
+      this.settingsModal.classList.remove("isOpen");
+    });
+
+    this.saveSettingsBtn?.addEventListener("click", () => {
+      const selected = this.networkInterfaceSelect.value;
+      window.javaBridge?.saveNetworkInterface?.(selected);
+      this.settingsModal.classList.remove("isOpen");
+      if (confirm("설정이 저장되었습니다. 변경 사항을 적용하려면 프로그램을 재시작해야 합니다.\n지금 재시작하시겠습니까?")) {
+          window.javaBridge?.restartApp?.();
+      }
+    });
+  }
+
+  openSettings() {
+    if (!window.javaBridge) return;
+
+    const interfacesStr = window.javaBridge.getNetworkInterfaces();
+    const currentInterface = window.javaBridge.getCurrentInterface();
+    const interfaces = this.safeParseJSON(interfacesStr, []);
+
+    this.networkInterfaceSelect.innerHTML = '<option value="Any">Any (Auto Detect)</option>';
+
+    interfaces.forEach((iface) => {
+      const opt = document.createElement("option");
+      opt.value = iface.name;
+      const addr =
+        iface.addresses && iface.addresses.length > 0 ? ` - ${iface.addresses[0]}` : "";
+      opt.textContent = `${iface.description || iface.name}${addr}`;
+      if (iface.name === currentInterface) {
+        opt.selected = true;
+      }
+      this.networkInterfaceSelect.appendChild(opt);
+    });
+
+    if (currentInterface === "Any") {
+      this.networkInterfaceSelect.value = "Any";
+    }
+
+    this.settingsModal.classList.add("isOpen");
   }
 
   bindDragToMoveWindow() {

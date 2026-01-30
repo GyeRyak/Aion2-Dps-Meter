@@ -18,6 +18,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlin.system.exitProcess
 
+import com.tbread.packet.PcapCapturer
+import com.tbread.packet.PropertyHandler
 import netscape.javascript.JSObject
 import org.slf4j.LoggerFactory
 import kotlin.system.exitProcess
@@ -45,6 +47,53 @@ class BrowserApp(private val dpsCalculator: DpsCalculator) : Application() {
         fun exitApp() {
           Platform.exit()     
           exitProcess(0)       
+        }
+
+        fun getNetworkInterfaces(): String {
+            val devices = PcapCapturer.getAllDevices()
+            val list = devices.map { device ->
+                mapOf(
+                    "name" to device.name,
+                    "description" to (device.description ?: "Unknown"),
+                    "addresses" to device.addresses.mapNotNull { it.address?.hostAddress }
+                )
+            }
+            return Json.encodeToString(list)
+        }
+
+        fun saveNetworkInterface(name: String) {
+            PropertyHandler.setProperty("network.interface", name)
+        }
+
+        fun getCurrentInterface(): String {
+            return PropertyHandler.getProperty("network.interface") ?: "Any"
+        }
+
+        fun restartApp() {
+            try {
+                val javaBin = System.getProperty("java.home") + "/bin/java"
+                val currentJar = java.io.File(BrowserApp::class.java.protectionDomain.codeSource.location.toURI())
+
+                if (!currentJar.name.endsWith(".jar")) {
+                     logger.warn("Not running from a jar, restart might fail or behave unexpectedly.")
+                     // 개발 환경(IDE)일 수 있음. 그냥 종료만 하거나, gradle command를 실행할 수도 있지만
+                     // 여기서는 단순히 종료 후 사용자가 다시 켜게 하거나, 
+                     // 베스트 에포트로 같은 커맨드를 시도해봄.
+                }
+
+                val command = ArrayList<String>()
+                command.add(javaBin)
+                command.add("-jar")
+                command.add(currentJar.path)
+
+                val builder = ProcessBuilder(command)
+                builder.start()
+                exitApp()
+            } catch (e: Exception) {
+                logger.error("Failed to restart", e)
+                // 실패시 그냥 종료 시도 혹은 에러 메시지
+                exitApp()
+            }
         }
     }
 
